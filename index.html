@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VLC-Style Controls for YouTube</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
+            color: #fff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #ff9933 0%, #ff6600 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            text-shadow: 0 4px 20px rgba(255, 119, 0, 0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 35px;
+            color: #999;
+            font-size: 15px;
+            font-weight: 400;
+        }
+
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto 30px;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6),
+                        0 0 0 1px rgba(255, 119, 0, 0.1);
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 */
+            height: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* VLC Controls Panel */
+        #vlc-controls {
+            background: linear-gradient(145deg, rgba(30, 30, 30, 0.98), rgba(20, 20, 20, 0.98));
+            padding: 25px;
+            border-radius: 0 0 16px 16px;
+            border-top: 3px solid #ff7700;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+            padding: 18px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 119, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .control-section:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 119, 0, 0.25);
+            box-shadow: 0 4px 12px rgba(255, 119, 0, 0.1);
+        }
+
+        .control-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 11px;
+            color: #ff9933;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 3px;
+            height: 14px;
+            background: linear-gradient(180deg, #ff7700, #ff9933);
+            border-radius: 2px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        button {
+            background: linear-gradient(145deg, #e65500, #d45500);
+            border: none;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(212, 85, 0, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        button:hover {
+            background: linear-gradient(145deg, #ff7700, #ff8800);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(255, 119, 0, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        button:active {
+            background: linear-gradient(145deg, #b84600, #a03d00);
+            transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(212, 85, 0, 0.3),
+                        inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        button.active {
+            background: linear-gradient(145deg, #00cc00, #00aa00);
+            box-shadow: 0 4px 16px rgba(0, 170, 0, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        button.active:hover {
+            background: linear-gradient(145deg, #00ee00, #00cc00);
+        }
+
+        input[type="range"] {
+            flex: 1;
+            min-width: 140px;
+            height: 8px;
+            background: linear-gradient(90deg, #333 0%, #444 100%);
+            outline: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(145deg, #ff7700, #ff9933);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(255, 119, 0, 0.5),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: linear-gradient(145deg, #ff8800, #ffaa44);
+            transform: scale(1.1);
+            box-shadow: 0 3px 12px rgba(255, 119, 0, 0.7);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(145deg, #ff7700, #ff9933);
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 8px rgba(255, 119, 0, 0.5);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider-label {
+            min-width: 65px;
+            text-align: right;
+            font-size: 14px;
+            color: #ff9933;
+            font-weight: 700;
+            background: rgba(255, 119, 0, 0.1);
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 119, 0, 0.2);
+        }
+
+        .bookmarks-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+            min-height: 32px;
+        }
+
+        .bookmark-item {
+            background: linear-gradient(145deg, #2a2a2a, #222);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid rgba(255, 119, 0, 0.3);
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            font-weight: 600;
+        }
+
+        .bookmark-item:hover {
+            background: linear-gradient(145deg, #383838, #2f2f2f);
+            border-color: #ff7700;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 119, 0, 0.3);
+        }
+
+        .bookmark-item .remove {
+            margin-left: 8px;
+            color: #ff4444;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .status-bar {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 119, 0, 0.2);
+        }
+
+        .status-item {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-label {
+            color: #ff9933;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-panel {
+            background: linear-gradient(145deg, rgba(40, 40, 40, 0.95), rgba(30, 30, 30, 0.95));
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 30px;
+            font-size: 13px;
+            line-height: 1.8;
+            border: 1px solid rgba(255, 119, 0, 0.2);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .info-panel h3 {
+            color: #ff9933;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-panel ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-panel li {
+            padding: 6px 0;
+            color: #ccc;
+            transition: color 0.2s ease;
+        }
+
+        .info-panel li:hover {
+            color: #fff;
+        }
+
+        .info-panel kbd {
+            background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+            padding: 4px 8px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 119, 0, 0.3);
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #ff9933;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        input[type="text"] {
+            background: linear-gradient(145deg, #2a2a2a, #222);
+            border: 1px solid rgba(255, 119, 0, 0.3);
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            flex: 1;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #ff7700;
+            box-shadow: 0 0 0 3px rgba(255, 119, 0, 0.2),
+                        inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .url-input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Status value styling */
+        #current-time, #duration, #status-speed {
+            font-weight: 700;
+            color: #fff;
+        }
+
+        #ab-status {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 20px 15px;
+            }
+            
+            .control-section {
+                padding: 15px;
+            }
+            
+            button {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+        }
+    
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 VLC-Style Controls for YouTube</h1>
+        <p class="subtitle">Professional video playback controls with A-B loop, frame stepping, bookmarks, and more</p>
+        
+        <div id="server-warning" class="hidden" style="background: linear-gradient(145deg, #ff4444, #cc0000); padding: 20px; border-radius: 12px; margin-bottom: 25px; text-align: center; border: 2px solid #ff6666; box-shadow: 0 4px 20px rgba(255, 68, 68, 0.4);">
+            <h3 style="margin-bottom: 10px; font-size: 18px; color: #fff;">⚠️ Important: Running Locally?</h3>
+            <p style="font-size: 14px; line-height: 1.6; margin-bottom: 15px; color: #fff;">
+                YouTube's player doesn't work with <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">file://</code> protocol. You need to run a local server.
+            </p>
+            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; text-align: left; font-size: 13px; line-height: 1.8;">
+                <strong style="color: #ffdd00;">Quick Solutions:</strong><br>
+                <strong>1. Python:</strong> <code style="background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px;">python -m http.server 8000</code><br>
+                <strong>2. Node.js:</strong> <code style="background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px;">npx serve .</code><br>
+                <strong>3. VS Code:</strong> Install "Live Server" extension and click "Go Live"<br>
+                <strong>4. PHP:</strong> <code style="background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px;">php -S localhost:8000</code>
+            </div>
+            <p style="margin-top: 15px; font-size: 12px; color: #ffdddd;">
+                Then open <strong>http://localhost:8000</strong> in your browser
+            </p>
+        </div>
+
+        <div class="url-input-group">
+            <input type="text" id="video-url" placeholder="Paste YouTube URL here (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)">
+            <button onclick="loadVideo()">Load Video</button>
+        </div>
+
+        <div class="video-wrapper">
+            <div class="video-container">
+                <div id="player"></div>
+            </div>
+
+            <div id="vlc-controls">
+                <!-- A-B Loop Section -->
+                <div class="control-section">
+                    <div class="section-title">A-B Loop Control</div>
+                    <div class="button-group">
+                        <button id="ab-start" title="Set point A (Keyboard: [)">Set Point A</button>
+                        <button id="ab-end" title="Set point B (Keyboard: ])">Set Point B</button>
+                        <button id="ab-clear" title="Clear loop (Keyboard: \)">Clear Loop</button>
+                        <button id="toggle-loop" title="Toggle loop mode (Keyboard: L)">Loop: OFF</button>
+                        <span id="ab-status" style="color: #aaa; font-size: 12px;">No loop set</span>
+                    </div>
+                </div>
+
+                <!-- Jump Controls -->
+                <div class="control-section">
+                    <div class="section-title">Jump Controls</div>
+                    <div class="button-group">
+                        <button data-jump="-30" title="Jump back 30s (Keyboard: Ctrl+←)">« 30s</button>
+                        <button data-jump="-10" title="Jump back 10s (Keyboard: ←)">« 10s</button>
+                        <button data-jump="-5" title="Jump back 5s (Keyboard: Shift+←)">« 5s</button>
+                        <button data-jump="5" title="Jump forward 5s (Keyboard: Shift+→)">5s »</button>
+                        <button data-jump="10" title="Jump forward 10s (Keyboard: →)">10s »</button>
+                        <button data-jump="30" title="Jump forward 30s (Keyboard: Ctrl+→)">30s »</button>
+                    </div>
+                </div>
+
+                <!-- Frame Step -->
+                <div class="control-section">
+                    <div class="section-title">Frame Control</div>
+                    <div class="button-group">
+                        <button id="frame-back" title="Previous frame (Keyboard: ,)">⏮ Frame Back</button>
+                        <button id="frame-forward" title="Next frame (Keyboard: .)">Frame Forward ⏭</button>
+                        <button id="screenshot" title="Take screenshot (Keyboard: S)">📸 Screenshot</button>
+                    </div>
+                </div>
+
+                <!-- Speed Control -->
+                <div class="control-section">
+                    <div class="section-title">Playback Speed</div>
+                    <div class="slider-container">
+                        <input id="speed-slider" type="range" min="0.25" max="4" step="0.25" value="1" title="Playback speed (Keyboard: +/-)">
+                        <span class="slider-label" id="speed-label">1.0×</span>
+                        <button onclick="resetSpeed()" title="Reset speed (Keyboard: =)">Reset</button>
+                        <button onclick="setSpeed(0.5)">0.5×</button>
+                        <button onclick="setSpeed(1.5)">1.5×</button>
+                        <button onclick="setSpeed(2)">2×</button>
+                    </div>
+                </div>
+
+                <!-- Video Filters -->
+                <div class="control-section">
+                    <div class="section-title">Video Filters</div>
+                    <div class="slider-container" style="margin-bottom: 8px;">
+                        <span style="min-width: 90px; font-size: 12px;">Brightness:</span>
+                        <input id="brightness-slider" type="range" min="0" max="200" value="100">
+                        <span class="slider-label" id="brightness-label">100%</span>
+                    </div>
+                    <div class="slider-container" style="margin-bottom: 8px;">
+                        <span style="min-width: 90px; font-size: 12px;">Contrast:</span>
+                        <input id="contrast-slider" type="range" min="0" max="200" value="100">
+                        <span class="slider-label" id="contrast-label">100%</span>
+                    </div>
+                    <div class="slider-container">
+                        <span style="min-width: 90px; font-size: 12px;">Saturation:</span>
+                        <input id="saturation-slider" type="range" min="0" max="200" value="100">
+                        <span class="slider-label" id="saturation-label">100%</span>
+                    </div>
+                    <div class="button-group" style="margin-top: 8px;">
+                        <button onclick="resetFilters()">Reset Filters</button>
+                    </div>
+                </div>
+
+                <!-- Bookmarks -->
+                <div class="control-section">
+                    <div class="section-title">Bookmarks</div>
+                    <div class="button-group">
+                        <button id="add-bookmark" title="Add bookmark (Keyboard: B)">➕ Add Bookmark</button>
+                        <button id="clear-bookmarks">🗑️ Clear All</button>
+                    </div>
+                    <div class="bookmarks-list" id="bookmarks-list"></div>
+                </div>
+            </div>
+
+            <div class="status-bar">
+                <div class="status-item">
+                    <span><span class="status-label">Time:</span> <span id="current-time">0:00</span> / <span id="duration">0:00</span></span>
+                    <span><span class="status-label">Speed:</span> <span id="status-speed">1.0×</span></span>
+                </div>
+                <div class="status-item">
+                    <span id="loop-status"><span class="status-label">Loop:</span> Inactive</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>⌨️ Keyboard Shortcuts</h3>
+            <ul>
+                <li><kbd>[</kbd> Set A-B loop point A | <kbd>]</kbd> Set A-B loop point B | <kbd>\</kbd> Clear A-B loop</li>
+                <li><kbd>L</kbd> Toggle loop mode | <kbd>Space</kbd> Play/Pause</li>
+                <li><kbd>←</kbd> Jump back 10s | <kbd>→</kbd> Jump forward 10s</li>
+                <li><kbd>Shift+←</kbd> Jump back 5s | <kbd>Shift+→</kbd> Jump forward 5s</li>
+                <li><kbd>Ctrl+←</kbd> Jump back 30s | <kbd>Ctrl+→</kbd> Jump forward 30s</li>
+                <li><kbd>,</kbd> Previous frame | <kbd>.</kbd> Next frame</li>
+                <li><kbd>+</kbd> / <kbd>=</kbd> Increase speed | <kbd>-</kbd> Decrease speed | <kbd>0</kbd> Reset speed</li>
+                <li><kbd>B</kbd> Add bookmark | <kbd>S</kbd> Take screenshot</li>
+                <li><kbd>F</kbd> Toggle fullscreen | <kbd>M</kbd> Toggle mute</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let player;
+        let loopA = null;
+        let loopB = null;
+        let loopEnabled = false;
+        let bookmarks = [];
+        let checkInterval;
+
+        // Check if running on file:// protocol and show warning
+        if (window.location.protocol === 'file:') {
+            document.getElementById('server-warning').classList.remove('hidden');
+        }
+
+        // Load YouTube IFrame API
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        // Initialize player when API is ready
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                videoId: 'jNQXAC9IVRw', // Default video (Me at the zoo - first YouTube video)
+                playerVars: {
+                    'playsinline': 1,
+                    'controls': 1,
+                    'rel': 0,
+                    'modestbranding': 1,
+                    'enablejsapi': 1,
+                    'origin': window.location.origin
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError
+                }
+            });
+        }
+
+        function onPlayerError(event) {
+            const errorMessages = {
+                2: 'Invalid video ID. Please check the URL.',
+                5: 'HTML5 player error. Try a different video.',
+                100: 'Video not found or has been removed.',
+                101: 'Video owner does not allow embedding.',
+                150: 'Video owner does not allow embedding.'
+            };
+            
+            const message = errorMessages[event.data] || 'Unknown playback error occurred.';
+            alert('YouTube Player Error: ' + message + '\n\nPlease try loading a different video.');
+        }
+
+        function onPlayerReady(event) {
+            initializeControls();
+            startTimeUpdate();
+        }
+
+        function onPlayerStateChange(event) {
+            // Update UI based on player state
+        }
+
+        function initializeControls() {
+            // A-B Loop Controls
+            document.getElementById('ab-start').onclick = () => {
+                loopA = player.getCurrentTime();
+                updateLoopStatus();
+            };
+
+            document.getElementById('ab-end').onclick = () => {
+                loopB = player.getCurrentTime();
+                updateLoopStatus();
+            };
+
+            document.getElementById('ab-clear').onclick = () => {
+                loopA = null;
+                loopB = null;
+                updateLoopStatus();
+            };
+
+            document.getElementById('toggle-loop').onclick = () => {
+                loopEnabled = !loopEnabled;
+                document.getElementById('toggle-loop').textContent = 'Loop: ' + (loopEnabled ? 'ON' : 'OFF');
+                document.getElementById('toggle-loop').classList.toggle('active', loopEnabled);
+                updateLoopStatus();
+            };
+
+            // Jump Controls
+            document.querySelectorAll('button[data-jump]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const amount = parseFloat(btn.dataset.jump);
+                    const newTime = player.getCurrentTime() + amount;
+                    player.seekTo(Math.max(0, Math.min(newTime, player.getDuration())), true);
+                });
+            });
+
+            // Frame Step (approximate - 1/30 second)
+            document.getElementById('frame-back').onclick = () => {
+                player.seekTo(Math.max(0, player.getCurrentTime() - 1/30), true);
+            };
+
+            document.getElementById('frame-forward').onclick = () => {
+                player.seekTo(Math.min(player.getDuration(), player.getCurrentTime() + 1/30), true);
+            };
+
+            // Screenshot
+            document.getElementById('screenshot').onclick = takeScreenshot;
+
+            // Speed Control
+            const speedSlider = document.getElementById('speed-slider');
+            const speedLabel = document.getElementById('speed-label');
+            
+            speedSlider.oninput = () => {
+                const speed = parseFloat(speedSlider.value);
+                player.setPlaybackRate(speed);
+                speedLabel.textContent = speed.toFixed(2) + '×';
+                document.getElementById('status-speed').textContent = speed.toFixed(2) + '×';
+            };
+
+            // Video Filters
+            const brightnessSlider = document.getElementById('brightness-slider');
+            const contrastSlider = document.getElementById('contrast-slider');
+            const saturationSlider = document.getElementById('saturation-slider');
+            const iframe = document.querySelector('iframe');
+
+            brightnessSlider.oninput = () => {
+                document.getElementById('brightness-label').textContent = brightnessSlider.value + '%';
+                updateFilters();
+            };
+
+            contrastSlider.oninput = () => {
+                document.getElementById('contrast-label').textContent = contrastSlider.value + '%';
+                updateFilters();
+            };
+
+            saturationSlider.oninput = () => {
+                document.getElementById('saturation-label').textContent = saturationSlider.value + '%';
+                updateFilters();
+            };
+
+            // Bookmarks
+            document.getElementById('add-bookmark').onclick = addBookmark;
+            document.getElementById('clear-bookmarks').onclick = () => {
+                bookmarks = [];
+                renderBookmarks();
+            };
+
+            // Keyboard Shortcuts
+            document.addEventListener('keydown', handleKeyboard);
+        }
+
+        function updateFilters() {
+            const brightness = document.getElementById('brightness-slider').value;
+            const contrast = document.getElementById('contrast-slider').value;
+            const saturation = document.getElementById('saturation-slider').value;
+            const iframe = document.querySelector('iframe');
+            
+            iframe.style.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+        }
+
+        function resetFilters() {
+            document.getElementById('brightness-slider').value = 100;
+            document.getElementById('contrast-slider').value = 100;
+            document.getElementById('saturation-slider').value = 100;
+            document.getElementById('brightness-label').textContent = '100%';
+            document.getElementById('contrast-label').textContent = '100%';
+            document.getElementById('saturation-label').textContent = '100%';
+            updateFilters();
+        }
+
+        function updateLoopStatus() {
+            const statusEl = document.getElementById('ab-status');
+            const loopStatusEl = document.getElementById('loop-status');
+            
+            if (loopA !== null && loopB !== null) {
+                statusEl.textContent = `A: ${formatTime(loopA)} → B: ${formatTime(loopB)}`;
+                statusEl.style.color = '#0f0';
+                if (loopEnabled) {
+                    loopStatusEl.innerHTML = '<span class="status-label">Loop:</span> <span style="color: #0f0;">Active</span>';
+                }
+            } else if (loopA !== null) {
+                statusEl.textContent = `A: ${formatTime(loopA)} (Set point B)`;
+                statusEl.style.color = '#ff0';
+            } else if (loopB !== null) {
+                statusEl.textContent = `B: ${formatTime(loopB)} (Set point A)`;
+                statusEl.style.color = '#ff0';
+            } else {
+                statusEl.textContent = 'No loop set';
+                statusEl.style.color = '#aaa';
+                loopStatusEl.innerHTML = '<span class="status-label">Loop:</span> Inactive';
+            }
+        }
+
+        function startTimeUpdate() {
+            checkInterval = setInterval(() => {
+                if (!player || !player.getCurrentTime) return;
+                
+                const currentTime = player.getCurrentTime();
+                const duration = player.getDuration();
+                
+                // Update time display
+                document.getElementById('current-time').textContent = formatTime(currentTime);
+                document.getElementById('duration').textContent = formatTime(duration);
+                
+                // A-B Loop check
+                if (loopEnabled && loopA !== null && loopB !== null && currentTime >= loopB) {
+                    player.seekTo(loopA, true);
+                }
+            }, 100);
+        }
+
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function addBookmark() {
+            const currentTime = player.getCurrentTime();
+            const bookmark = {
+                time: currentTime,
+                label: formatTime(currentTime)
+            };
+            bookmarks.push(bookmark);
+            renderBookmarks();
+        }
+
+        function renderBookmarks() {
+            const container = document.getElementById('bookmarks-list');
+            container.innerHTML = '';
+            
+            bookmarks.forEach((bookmark, index) => {
+                const el = document.createElement('div');
+                el.className = 'bookmark-item';
+                el.innerHTML = `${bookmark.label}<span class="remove">×</span>`;
+                
+                el.onclick = (e) => {
+                    if (e.target.classList.contains('remove')) {
+                        bookmarks.splice(index, 1);
+                        renderBookmarks();
+                    } else {
+                        player.seekTo(bookmark.time, true);
+                    }
+                };
+                
+                container.appendChild(el);
+            });
+        }
+
+        function takeScreenshot() {
+            // Create a canvas and draw the current video frame
+            // Note: Due to CORS restrictions, this works best with same-origin videos
+            alert('Screenshot feature: Due to browser security (CORS), screenshots of YouTube videos cannot be captured directly. This feature works with self-hosted videos.');
+        }
+
+        function resetSpeed() {
+            player.setPlaybackRate(1.0);
+            document.getElementById('speed-slider').value = 1;
+            document.getElementById('speed-label').textContent = '1.0×';
+            document.getElementById('status-speed').textContent = '1.0×';
+        }
+
+        function setSpeed(speed) {
+            player.setPlaybackRate(speed);
+            document.getElementById('speed-slider').value = speed;
+            document.getElementById('speed-label').textContent = speed.toFixed(2) + '×';
+            document.getElementById('status-speed').textContent = speed.toFixed(2) + '×';
+        }
+
+        function handleKeyboard(e) {
+            // Don't trigger if typing in input field
+            if (e.target.tagName === 'INPUT') return;
+
+            const key = e.key.toLowerCase();
+            
+            // A-B Loop
+            if (key === '[') {
+                e.preventDefault();
+                document.getElementById('ab-start').click();
+            } else if (key === ']') {
+                e.preventDefault();
+                document.getElementById('ab-end').click();
+            } else if (key === '\\') {
+                e.preventDefault();
+                document.getElementById('ab-clear').click();
+            } else if (key === 'l') {
+                e.preventDefault();
+                document.getElementById('toggle-loop').click();
+            }
+            
+            // Jump controls
+            else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (e.ctrlKey) {
+                    player.seekTo(player.getCurrentTime() - 30, true);
+                } else if (e.shiftKey) {
+                    player.seekTo(player.getCurrentTime() - 5, true);
+                } else {
+                    player.seekTo(player.getCurrentTime() - 10, true);
+                }
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                if (e.ctrlKey) {
+                    player.seekTo(player.getCurrentTime() + 30, true);
+                } else if (e.shiftKey) {
+                    player.seekTo(player.getCurrentTime() + 5, true);
+                } else {
+                    player.seekTo(player.getCurrentTime() + 10, true);
+                }
+            }
+            
+            // Frame step
+            else if (key === ',') {
+                e.preventDefault();
+                document.getElementById('frame-back').click();
+            } else if (key === '.') {
+                e.preventDefault();
+                document.getElementById('frame-forward').click();
+            }
+            
+            // Speed control
+            else if (key === '+' || key === '=') {
+                e.preventDefault();
+                const currentSpeed = player.getPlaybackRate();
+                setSpeed(Math.min(4, currentSpeed + 0.25));
+            } else if (key === '-') {
+                e.preventDefault();
+                const currentSpeed = player.getPlaybackRate();
+                setSpeed(Math.max(0.25, currentSpeed - 0.25));
+            } else if (key === '0') {
+                e.preventDefault();
+                resetSpeed();
+            }
+            
+            // Bookmarks
+            else if (key === 'b') {
+                e.preventDefault();
+                addBookmark();
+            }
+            
+            // Screenshot
+            else if (key === 's') {
+                e.preventDefault();
+                takeScreenshot();
+            }
+            
+            // Play/Pause
+            else if (key === ' ') {
+                e.preventDefault();
+                if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                    player.pauseVideo();
+                } else {
+                    player.playVideo();
+                }
+            }
+            
+            // Fullscreen
+            else if (key === 'f') {
+                e.preventDefault();
+                const iframe = document.querySelector('iframe');
+                if (iframe.requestFullscreen) {
+                    iframe.requestFullscreen();
+                }
+            }
+            
+            // Mute
+            else if (key === 'm') {
+                e.preventDefault();
+                if (player.isMuted()) {
+                    player.unMute();
+                } else {
+                    player.mute();
+                }
+            }
+        }
+
+        function loadVideo() {
+            const url = document.getElementById('video-url').value;
+            const videoId = extractVideoId(url);
+            
+            if (videoId) {
+                player.loadVideoById(videoId);
+                // Reset states
+                loopA = null;
+                loopB = null;
+                loopEnabled = false;
+                bookmarks = [];
+                document.getElementById('toggle-loop').textContent = 'Loop: OFF';
+                document.getElementById('toggle-loop').classList.remove('active');
+                updateLoopStatus();
+                renderBookmarks();
+                resetFilters();
+                resetSpeed();
+            } else {
+                alert('Invalid YouTube URL. Please enter a valid YouTube video URL.');
+            }
+        }
+
+        function extractVideoId(url) {
+            const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
+    </script>
+</body>
+</html>
